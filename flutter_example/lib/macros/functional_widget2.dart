@@ -20,8 +20,7 @@ class FunctionalWidget2 implements ClassDeclarationMacro {
   void visitClassDeclaration(
       ClassDeclaration declaration, ClassDeclarationBuilder builder) {
     final build = buildMethod.ast;
-    print(build);
-    print(build.runtimeType);
+
     if (build is! ast.FunctionExpression) {
       throw ArgumentError(
           'Build Method is not a Function Expression ${build.runtimeType}');
@@ -50,9 +49,6 @@ class FunctionalWidget2 implements ClassDeclarationMacro {
         Declaration('final ${param!.typeRef.toCode()} ${param.name};'),
     ];
 
-//
-    var widgetName = declaration.name;
-
     var constructorArgs = <Code>[
       for (var param in positionalFieldParams)
         Fragment('this.${param!.name}, '),
@@ -62,6 +58,8 @@ class FunctionalWidget2 implements ClassDeclarationMacro {
             '${param.isRequired ? 'required ' : ''}this.${param.identifier!.name}, '),
       Fragment('Key? key, }'),
     ];
+
+    var widgetName = declaration.name;
     var constructor = Declaration.fromParts(
         ['const $widgetName(', ...constructorArgs, ') : super(key: key);']);
 
