@@ -10,13 +10,52 @@
 import 'package:flutter/material.dart';
 import 'macros/auto_dispose.dart';
 import 'macros/functional_widget.dart';
+import 'macros/functional_widget2.dart';
 import 'macros/render_accessors.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  final String? appTitle;
+  final String? homePageTitle;
+  const MyApp({
+    this.appTitle,
+    this.homePageTitle,
+    Key? key,
+  }) : super(key: key);
+  @override
+  Widget build(BuildContext context) => _buildApp(
+        context,
+        appTitle: appTitle,
+        homePageTitle: homePageTitle,
+      );
+}
+
+@FunctionalWidget(widgetName: 'MyApp')
+Widget _buildApp(BuildContext context,
+    {String? appTitle, String? homePageTitle}) {
+  return MaterialApp(
+      title: appTitle ?? 'Flutter Demo',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: MyHomePage(title: homePageTitle ?? 'Flutter Demo Home Page'));
+}
+
+@FunctionalWidget2((BuildContext context,
+    {String? appTitle, String? homePageTitle}) {
+  return MaterialApp(
+      title: appTitle ?? 'Flutter Demo',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: MyHomePage(title: homePageTitle ?? 'Flutter Demo Home Page'));
+})
+class MyApp2 extends StatelessWidget {}
 
 class MyHomePage extends StatefulWidget {
   final String title;
   @override
   State<MyHomePage> createState() => _MyHomePageState();
-  const MyHomePage({Key? key, required this.title}) : super(key: key);
+  const MyHomePage({Key? key, this.title}) : super(key: key);
 }
 
 class _MyHomePageState extends State<MyHomePage> {
@@ -83,7 +122,7 @@ class MyColoredFill extends LeafRenderObjectWidget {
     renderObject.color = color;
   }
 
-  const MyColoredFill({Key? key, required this.color}) : super(key: key);
+  const MyColoredFill({Key? key, this.color}) : super(key: key);
 }
 
 class MyColoredFillRenderBox extends RenderBox {
@@ -104,33 +143,4 @@ class MyColoredFillRenderBox extends RenderBox {
   MyColoredFillRenderBox({required Color color}) : _color = color;
   @override
   bool get sizedByParent => true;
-}
-
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  final String? appTitle;
-  final String? homePageTitle;
-  const MyApp({
-    this.appTitle,
-    this.homePageTitle,
-    Key? key,
-  }) : super(key: key);
-  @override
-  Widget build(BuildContext context) => _buildApp(
-        context,
-        appTitle: appTitle,
-        homePageTitle: homePageTitle,
-      );
-}
-
-@FunctionalWidget(widgetName: 'MyApp')
-Widget _buildApp(BuildContext context,
-    {String? appTitle, String? homePageTitle}) {
-  return MaterialApp(
-      title: appTitle ?? 'Flutter Demo',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: MyHomePage(title: homePageTitle ?? 'Flutter Demo Home Page'));
 }

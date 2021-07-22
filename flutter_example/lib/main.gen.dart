@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'macros/auto_dispose.dart';
 import 'macros/functional_widget.dart';
+import 'macros/functional_widget2.dart';
 import 'macros/render_accessors.dart';
 
 void main() {
@@ -16,6 +17,15 @@ Widget _buildApp(BuildContext context,
       theme: ThemeData(primarySwatch: Colors.blue),
       home: MyHomePage(title: homePageTitle ?? 'Flutter Demo Home Page'));
 }
+
+@FunctionalWidget2((BuildContext context,
+    {String? appTitle, String? homePageTitle}) {
+  return MaterialApp(
+      title: appTitle ?? 'Flutter Demo',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: MyHomePage(title: homePageTitle ?? 'Flutter Demo Home Page'));
+})
+class MyApp2 extends StatelessWidget {}
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({Key? key, required this.title}) : super(key: key);

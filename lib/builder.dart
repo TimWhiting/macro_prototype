@@ -101,7 +101,6 @@ abstract class _MacroBuilder extends Builder {
         var start = clazz.offset;
         var end = clazz.leftBracket.charOffset;
         classBuffer.writeln(originalSource.substring(start, end + 1));
-
         for (var checker in macros.keys) {
           implementedDecls.addAll(await maybeApplyMacro(
                   checker,
@@ -219,7 +218,7 @@ class TypesMacroBuilder extends _MacroBuilder {
       String originalSource) async {
     if (!checker.hasAnnotationOf(element)) return null;
     _checkValidMacroApplication(element, macro);
-    macro = _instantiateFromMeta(macro, checker.firstAnnotationOf(element)!);
+    macro = await _instantiateFromMeta(macro, element, resolver, checker);
     if (macro is ClassTypeMacro && element is analyzer.ClassElement) {
       macro.visitClassType(
           AnalyzerClassType(element, originalReference: element.thisType),
@@ -260,7 +259,7 @@ class DeclarationsMacroBuilder extends _MacroBuilder {
       String originalSource) async {
     if (!checker.hasAnnotationOf(element)) return null;
     _checkValidMacroApplication(element, macro);
-    macro = _instantiateFromMeta(macro, checker.firstAnnotationOf(element)!);
+    macro = await _instantiateFromMeta(macro, element, resolver, checker);
     if (element is analyzer.ClassElement && macro is ClassDeclarationMacro) {
       macro.visitClassDeclaration(
           AnalyzerClassDeclaration(element,
@@ -316,7 +315,7 @@ class DefinitionsMacroBuilder extends _MacroBuilder {
       String originalSource) async {
     if (!checker.hasAnnotationOf(element)) return null;
     _checkValidMacroApplication(element, macro);
-    macro = _instantiateFromMeta(macro, checker.firstAnnotationOf(element)!);
+    macro = await _instantiateFromMeta(macro, element, resolver, checker);
     if (element is analyzer.FieldElement && macro is FieldDefinitionMacro) {
       var fieldBuffer = StringBuffer();
       var parentClass = element.enclosingElement as analyzer.ClassElement;
@@ -533,9 +532,7 @@ ${_definition.type.toCode()} ${_definition.name} = $body;''');
     if (!_definition.isAbstract && !_definition.isExternal) {
       throw 'Cannot implement non-abstract or external field $_definition';
     }
-    _buffer
-      ..writeln(getter)
-      ..writeln(setter);
+    _buffer..writeln(getter)..writeln(setter);
     supportingDeclarations?.forEach(_buffer.writeln);
   }
 }
@@ -745,7 +742,9 @@ class _MacroFunctionDefinitionBuilder extends _DefinitionBuilder
   }
 }
 
-Macro _instantiateFromMeta(Macro macro, analyzer.DartObject constant) {
+Future<Macro> _instantiateFromMeta(Macro macro, analyzer.Element element,
+    Resolver resolver, TypeChecker checker) async {
+  final constant = checker.firstAnnotationOf(element)!;
   var clazz = reflectClass(macro.runtimeType);
   var constructor = clazz.declarations.values.firstWhere((d) =>
           d is MethodMirror && (d.isConstructor || d.isFactoryConstructor))
@@ -755,22 +754,55 @@ Macro _instantiateFromMeta(Macro macro, analyzer.DartObject constant) {
   var reader = ConstantReader(constant);
   var positionalArguments = [];
   var namedArguments = <Symbol, Object?>{};
+  var index = 0;
   for (var param in constructor.parameters) {
     var field =
         fields.firstWhere((field) => field.simpleName == param.simpleName);
-    var value = reader.read(field.simpleName
+    final fieldType = field.type.simpleName
         .toString()
         .replaceFirst('Symbol("', '')
-        .replaceFirst('")', ''));
-    if (!value.isLiteral) {
-      throw UnsupportedError(
-          'Only literal values are supported for macro constructors');
-    }
-    if (param.isNamed) {
-      namedArguments[param.simpleName] = value.literalValue;
+        .replaceFirst('")', '');
+    if (fieldType == 'UnresolvedAST') {
+      final ast =
+          (await resolver.astNodeFor(element)) as analyzer.AnnotatedNode;
+      final macroAst = ast.metadata
+          .firstWhere((a) => a.name.name == macro.runtimeType.toString())
+          .arguments!
+          .arguments[index];
+
+      if (param.isNamed) {
+        namedArguments[param.simpleName] = UnresolvedAST(macroAst);
+      } else {
+        positionalArguments.add(UnresolvedAST(macroAst));
+      }
+    } else if (fieldType == 'ResolvedAST') {
+      final ast = (await resolver.astNodeFor(element, resolve: true))
+          as analyzer.AnnotatedNode;
+      final macroAst = ast.metadata
+          .firstWhere((a) => a.name.name == macro.runtimeType.toString())
+          .arguments!
+          .arguments[index];
+      if (param.isNamed) {
+        namedArguments[param.simpleName] = ResolvedAST(macroAst);
+      } else {
+        positionalArguments.add(ResolvedAST(macroAst));
+      }
     } else {
-      positionalArguments.add(value.literalValue);
+      var value = reader.read(field.simpleName
+          .toString()
+          .replaceFirst('Symbol("', '')
+          .replaceFirst('")', ''));
+      if (!value.isLiteral) {
+        throw UnsupportedError(
+            'Only literal values are supported for macro constructors');
+      }
+      if (param.isNamed) {
+        namedArguments[param.simpleName] = value.literalValue;
+      } else {
+        positionalArguments.add(value.literalValue);
+      }
     }
+    index++;
   }
   return clazz
       .newInstance(

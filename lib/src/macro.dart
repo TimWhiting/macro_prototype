@@ -2,6 +2,7 @@ import 'code.dart';
 import 'declarations.dart';
 import 'definitions.dart';
 import 'types.dart';
+import 'package:analyzer/dart/ast/ast.dart' as analyzer;
 
 /// The marker interface for all types of macros.
 abstract class Macro {}
@@ -271,4 +272,16 @@ abstract class FieldDefinitionBuilder implements DefinitionBuilder {
   /// field.
   void withGetterSetterPair(Declaration getter, Declaration setter,
       {List<Code>? supportingDeclarations});
+}
+
+class UnresolvedAST {
+  final analyzer.AstNode? _ast;
+  analyzer.AstNode get ast => _ast!;
+  const UnresolvedAST(this._ast);
+}
+
+class ResolvedAST {
+  final analyzer.AstNode? _ast;
+  analyzer.AstNode get ast => _ast!;
+  const ResolvedAST(this._ast);
 }
