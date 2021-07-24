@@ -756,6 +756,11 @@ Future<Macro> _instantiateFromMeta(Macro macro, analyzer.Element element,
   var namedArguments = <Symbol, Object?>{};
   var index = 0;
   for (var param in constructor.parameters) {
+    final paramName = param.simpleName
+        .toString()
+        .replaceFirst('Symbol("', '')
+        .replaceFirst('")', '');
+    final annotatedNodeParam = paramName == 'annotatedNode';
     var field =
         fields.firstWhere((field) => field.simpleName == param.simpleName);
     final fieldType = field.type.simpleName
@@ -765,10 +770,12 @@ Future<Macro> _instantiateFromMeta(Macro macro, analyzer.Element element,
     if (fieldType == 'UnresolvedAST') {
       final ast =
           (await resolver.astNodeFor(element)) as analyzer.AnnotatedNode;
-      final macroAst = ast.metadata
-          .firstWhere((a) => a.name.name == macro.runtimeType.toString())
-          .arguments!
-          .arguments[index];
+      final macroAst = annotatedNodeParam
+          ? ast
+          : ast.metadata
+              .firstWhere((a) => a.name.name == macro.runtimeType.toString())
+              .arguments!
+              .arguments[index];
 
       if (param.isNamed) {
         namedArguments[param.simpleName] = UnresolvedAST(macroAst);
@@ -778,10 +785,12 @@ Future<Macro> _instantiateFromMeta(Macro macro, analyzer.Element element,
     } else if (fieldType == 'ResolvedAST') {
       final ast = (await resolver.astNodeFor(element, resolve: true))
           as analyzer.AnnotatedNode;
-      final macroAst = ast.metadata
-          .firstWhere((a) => a.name.name == macro.runtimeType.toString())
-          .arguments!
-          .arguments[index];
+      final macroAst = annotatedNodeParam
+          ? ast
+          : ast.metadata
+              .firstWhere((a) => a.name.name == macro.runtimeType.toString())
+              .arguments!
+              .arguments[index];
       if (param.isNamed) {
         namedArguments[param.simpleName] = ResolvedAST(macroAst);
       } else {

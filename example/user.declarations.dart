@@ -6,6 +6,7 @@
 //   - Instance of '_JsonMacro'
 //   - Instance of 'ObservableMacro'
 //   - Instance of '_DataClass'
+//   - Instance of '_FreezedClass'
 //
 // To make changes you should edit the `example/user.gen.dart` file;
 

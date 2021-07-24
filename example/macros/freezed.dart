@@ -1,19 +1,66 @@
 import 'package:collection/collection.dart';
 import 'package:macro_builder/definition.dart';
+import 'package:analyzer/dart/ast/ast.dart' as ast;
 
-const dataClass = _DataClass();
+const freezed = _FreezedClass(ResolvedAST(null));
 
-class _DataClass implements ClassDeclarationMacro {
-  const _DataClass();
+class _FreezedClass implements ClassDeclarationMacro {
+  final ResolvedAST annotatedNode;
+  const _FreezedClass(this.annotatedNode);
 
   @override
   void visitClassDeclaration(
       ClassDeclaration declaration, ClassDeclarationBuilder builder) {
-    autoConstructor.visitClassDeclaration(declaration, builder);
-    copyWith.visitClassDeclaration(declaration, builder);
-    hashCode.visitClassDeclaration(declaration, builder);
-    equality.visitClassDeclaration(declaration, builder);
-    toString.visitClassDeclaration(declaration, builder);
+    final klass = annotatedNode.ast as ast.ClassDeclaration;
+    try {
+      for (final constructor
+          in klass.members.whereType<ast.ConstructorDeclaration>()) {
+        if (constructor.name == null) {
+          continue;
+        }
+        print(constructor);
+        print(constructor.redirectedConstructor);
+        final name = constructor.redirectedConstructor!.toSource();
+        Code code = Fragment('');
+        for (var field in constructor.parameters.parameters) {
+          code = Fragment(
+              '$code\nfinal ${field.declaredElement!.type.getDisplayString(withNullability: true)} ${field.identifier!.name};');
+        }
+        code = Fragment('$code\n${name}(');
+        final positionalParams =
+            constructor.parameters.parameters.where((p) => p.isPositional);
+        for (var field in positionalParams) {
+          code = Fragment('$code\nthis.${field.identifier!.name},');
+        }
+        final namedParams = {
+          for (var p = 0; p < constructor.parameters.parameters.length; p++)
+            if (!constructor.parameters.parameterElements[p]!.isPositional)
+              constructor.parameters.parameters[p]:
+                  constructor.parameters.parameterElements[p]
+        };
+        if (namedParams.isNotEmpty) {
+          code = Fragment('$code {');
+          for (var field in namedParams.keys) {
+            var requiredKeyword = field.isRequired ? 'required ' : '';
+            code = Fragment(
+                '$code\n${requiredKeyword}this.${field.identifier!.name},');
+          }
+          code = Fragment('$code\n}');
+        }
+        code = Fragment('$code);');
+
+        builder.addToLibrary(Declaration.fromParts(
+            ['class $name extends ${declaration.name}{', code, '}']));
+      }
+    } catch (e, st) {
+      print(e);
+      print(st);
+    }
+    // autoConstructor.visitClassDeclaration(declaration, builder);
+    // copyWith.visitClassDeclaration(declaration, builder);
+    // hashCode.visitClassDeclaration(declaration, builder);
+    // equality.visitClassDeclaration(declaration, builder);
+    // toString.visitClassDeclaration(declaration, builder);
   }
 }
 
@@ -52,7 +99,7 @@ class _AutoConstructor implements ClassDeclarationMacro {
             '$code\n$requiredKeyword${param.type.toCode()} ${param.name},');
       }
       for (var param in superconstructor.namedParameters.values) {
-        var requiredKeyword = param.required ? 'required ' : '';
+        var requiredKeyword = param.required ? '' : 'required ';
         code = Fragment(
             '$code\n$requiredKeyword${param.type.toCode()} ${param.name},');
       }
